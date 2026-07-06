@@ -1,21 +1,18 @@
 import nodemailer from "nodemailer";
 
-const SUBJECT = "You're invited to Cherryflix 🍒";
-
 /**
- * Send an invitation email. Prefers Gmail SMTP (GMAIL_USER + GMAIL_APP_PASSWORD)
- * which can email ANY recipient with no domain needed; falls back to Resend.
- * Returns whether it actually delivered so the caller can be honest to the admin.
+ * Low-level sender. Prefers Gmail SMTP (GMAIL_USER + GMAIL_APP_PASSWORD) which
+ * can email ANY recipient with no domain needed; falls back to Resend.
  */
-export async function sendInviteEmail(
-  to: string,
-  loginUrl: string
-): Promise<{ ok: boolean; error?: string }> {
+async function sendMail(opts: {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string;
+}): Promise<{ ok: boolean; error?: string }> {
   const gmailUser = process.env.GMAIL_USER;
   const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  const html = signInEmailHtml(loginUrl);
 
-  // Preferred: send from the owner's Gmail (works to anyone, no domain needed).
   if (gmailUser && gmailPass) {
     try {
       const transporter = nodemailer.createTransport({
@@ -26,9 +23,10 @@ export async function sendInviteEmail(
       });
       await transporter.sendMail({
         from: `Cherryflix <${gmailUser}>`,
-        to,
-        subject: SUBJECT,
-        html,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        replyTo: opts.replyTo,
       });
       return { ok: true };
     } catch (e) {
@@ -36,7 +34,6 @@ export async function sendInviteEmail(
     }
   }
 
-  // Fallback: Resend (sandbox sender only reaches the Resend account owner).
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>";
   if (!apiKey) return { ok: false, error: "No email sender configured" };
@@ -47,13 +44,50 @@ export async function sendInviteEmail(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from, to, subject: SUBJECT, html }),
+      body: JSON.stringify({
+        from,
+        to: opts.to,
+        subject: opts.subject,
+        html: opts.html,
+        reply_to: opts.replyTo,
+      }),
     });
     if (!res.ok) return { ok: false, error: await res.text() };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export function sendInviteEmail(to: string, loginUrl: string) {
+  return sendMail({
+    to,
+    subject: "You're invited to Cherryflix 🍒",
+    html: signInEmailHtml(loginUrl),
+  });
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+export function sendContactEmail(
+  to: string,
+  msg: { name: string; email: string; message: string }
+) {
+  const html = `<div style="font-family:Arial,Helvetica,sans-serif;color:#111;line-height:1.5;">
+    <h2 style="margin:0 0 12px;">New message from Cherryflix</h2>
+    <p style="margin:4px 0;"><strong>Name:</strong> ${escapeHtml(msg.name)}</p>
+    <p style="margin:4px 0;"><strong>Email:</strong> ${escapeHtml(msg.email)}</p>
+    <p style="margin:12px 0 4px;"><strong>Message:</strong></p>
+    <p style="white-space:pre-wrap;margin:0;">${escapeHtml(msg.message)}</p>
+  </div>`;
+  return sendMail({
+    to,
+    subject: `New Cherryflix message from ${msg.name}`,
+    replyTo: msg.email,
+    html,
+  });
 }
 
 // Branded HTML for the Cherryflix magic-link / invite email.

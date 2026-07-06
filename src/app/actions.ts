@@ -12,7 +12,7 @@ import {
   setProfile,
   setImage,
 } from "@/lib/invites";
-import { sendInviteEmail } from "@/lib/email";
+import { sendInviteEmail, sendContactEmail } from "@/lib/email";
 
 export type ActionState = { ok: boolean; message: string };
 
@@ -188,6 +188,40 @@ export async function updateAvatarAction(
   return {
     ok: true,
     message: image ? "Profile photo updated." : "Profile photo removed.",
+  };
+}
+
+/** Public "Contact Us" form — emails the owner. No login required. */
+export async function contactAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const message = String(formData.get("message") ?? "").trim();
+
+  if (!name || !EMAIL_RE.test(email) || message.length < 2) {
+    return { ok: false, message: "Please add your name, a valid email, and a message." };
+  }
+  if (message.length > 3000) {
+    return { ok: false, message: "Message is too long (max 3000 characters)." };
+  }
+
+  const to =
+    (process.env.ADMIN_EMAILS ?? "").split(",")[0]?.trim() ||
+    process.env.GMAIL_USER ||
+    "";
+  if (!to) {
+    return { ok: false, message: "Contact isn't available right now. Please try later." };
+  }
+
+  const sent = await sendContactEmail(to, { name, email, message });
+  if (!sent.ok) {
+    return { ok: false, message: "Couldn't send your message right now. Please try again later." };
+  }
+  return {
+    ok: true,
+    message: "Thanks! Your message has been sent — we'll get back to you soon.",
   };
 }
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CATALOG } from "@/lib/content";
 import Faq from "./Faq";
 import GetStartedForm from "./GetStartedForm";
+import ContactForm from "./ContactForm";
 import Logo from "./Logo";
 
 const FEATURES = [
@@ -65,12 +66,12 @@ export default function Landing() {
 
         <div className="relative z-10 mx-auto max-w-3xl px-6 text-center">
           <h1 className="text-4xl font-extrabold leading-tight drop-shadow-xl sm:text-6xl">
-            Unlimited anime &amp; movies,
+            Watch Anime &amp; Movies Online,
             <br className="hidden sm:block" /> all in one place.
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-white/75 sm:text-xl">
-            Your private streaming space. Ad-free, invite-only, and always ready
-            when you are.
+            Stream your favorite anime series and movies in your own private,
+            ad-free space — anytime, on any device.
           </p>
           <p className="mt-8 text-sm text-white/60">
             Already invited? Enter your email to sign in.
@@ -141,10 +142,28 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* CONTACT */}
+      <section
+        id="contact"
+        className="mx-auto w-full max-w-2xl scroll-mt-20 px-5 py-16 sm:px-8"
+      >
+        <h2 className="text-center text-2xl font-bold sm:text-3xl">Contact Us</h2>
+        <p className="mx-auto mt-3 max-w-md text-center text-white/60">
+          Questions about Cherryflix or want an invite? Send us a message and
+          we&apos;ll get back to you.
+        </p>
+        <div className="mt-8">
+          <ContactForm />
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="border-t border-white/5 px-5 py-10 text-center text-sm text-white/40 sm:px-8">
         <Logo className="mx-auto h-11 w-auto" />
         <p className="mt-3">A private streaming space · Invite-only</p>
+        <a href="#contact" className="mt-3 inline-block text-white/60 hover:text-cherry">
+          Contact Us
+        </a>
       </footer>
     </div>
   );
