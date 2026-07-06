@@ -1,12 +1,11 @@
 import LoginForm from "@/components/LoginForm";
-import OwnerLoginForm from "@/components/OwnerLoginForm";
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sent?: string; error?: string }>;
+  searchParams: Promise<{ sent?: string; error?: string; email?: string }>;
 }) {
-  const { sent, error } = await searchParams;
+  const { sent, error, email } = await searchParams;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
@@ -15,13 +14,13 @@ export default async function LoginPage({
           <span className="text-cherry">Cherry</span>flix
         </h1>
         <p className="mt-2 text-center text-sm text-white/50">
-          Private streaming — sign in with your invited email.
+          Invite-only streaming. Sign in with the email you were invited with.
         </p>
 
         <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6">
           {sent ? (
             <p className="text-center text-sm text-emerald-400">
-              ✔ Check your inbox — we sent you a sign-in link. You can close this
+              ✔ Check your inbox — we sent your sign-in link. You can close this
               tab.
             </p>
           ) : (
@@ -31,12 +30,11 @@ export default async function LoginPage({
                   Something went wrong signing in. Try again.
                 </p>
               )}
-              <LoginForm />
+              <LoginForm prefill={email} />
               <p className="mt-4 text-center text-xs text-white/40">
-                No password needed. We&apos;ll email you a magic link. Only
-                invited emails can enter.
+                Only members invited by the owner can enter. Not invited yet?
+                Reach out to get access.
               </p>
-              <OwnerLoginForm email="jerico.ursua1@gmail.com" />
             </>
           )}
         </div>

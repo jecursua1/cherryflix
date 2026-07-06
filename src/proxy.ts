@@ -11,10 +11,14 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth?.user;
   const isAdmin = Boolean(req.auth?.user?.isAdmin);
 
-  const isPublic = path === "/login" || path.startsWith("/api/auth");
+  const isPublic =
+    path === "/" ||
+    path === "/login" ||
+    path === "/owner" ||
+    path.startsWith("/api/auth");
 
   if (isPublic) {
-    if (isLoggedIn && path === "/login") {
+    if (isLoggedIn && (path === "/login" || path === "/owner")) {
       return NextResponse.redirect(new URL("/", nextUrl));
     }
     return NextResponse.next();

@@ -5,15 +5,20 @@ import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import Row from "@/components/Row";
 import Card from "@/components/Card";
+import Landing from "@/components/Landing";
 
 export default async function Home({
   searchParams,
 }: {
   searchParams: Promise<{ type?: string }>;
 }) {
-  const { type } = await searchParams;
   const session = await auth();
-  if (session?.user?.email) await touchUser(session.user.email);
+
+  // Guests see the public marketing landing page.
+  if (!session?.user) return <Landing />;
+
+  const { type } = await searchParams;
+  if (session.user.email) await touchUser(session.user.email);
 
   const filtered: Title[] | null =
     type === "anime" || type === "movie" ? getByType(type) : null;

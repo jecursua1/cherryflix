@@ -2,6 +2,7 @@ import type { NextAuthConfig } from "next-auth";
 import Resend from "next-auth/providers/resend";
 import Credentials from "next-auth/providers/credentials";
 import { isAdmin } from "@/lib/roles";
+import { signInEmailHtml } from "@/lib/email";
 
 // Edge-safe portion of the Auth.js config (no database adapter here so it can
 // run inside middleware). The adapter + db-backed callbacks live in auth.ts.
@@ -11,6 +12,24 @@ export const authConfig = {
     Resend({
       apiKey: process.env.RESEND_API_KEY,
       from: process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>",
+      async sendVerificationRequest({ identifier: email, url }) {
+        const res = await fetch("https://api.resend.com/emails", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            from: process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>",
+            to: email,
+            subject: "Sign in to Cherryflix 🍒",
+            html: signInEmailHtml(url),
+          }),
+        });
+        if (!res.ok) {
+          throw new Error(`Resend error ${res.status}: ${await res.text()}`);
+        }
+      },
     }),
     // Owner login (email + password) — lets you in without email/DB setup.
     Credentials({
