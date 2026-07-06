@@ -4,7 +4,6 @@ import { signOutAction } from "@/app/actions";
 
 export default async function Navbar() {
   const session = await auth();
-  const isAdmin = session?.user?.isAdmin;
   const email = session?.user?.email ?? "";
   const initial = email.charAt(0).toUpperCase() || "?";
 
@@ -23,14 +22,6 @@ export default async function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          {isAdmin && (
-            <Link
-              href="/admin"
-              className="rounded-md border border-white/15 px-3 py-1.5 text-sm text-white/80 hover:bg-white/10"
-            >
-              Dashboard
-            </Link>
-          )}
           <div
             className="grid h-8 w-8 place-items-center rounded-md bg-cherry text-sm font-bold text-white"
             title={email}
