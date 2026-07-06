@@ -1,9 +1,10 @@
 import NextAuth from "next-auth";
 import Resend from "next-auth/providers/resend";
+import Credentials from "next-auth/providers/credentials";
 import PostgresAdapter from "@auth/pg-adapter";
 import { pool } from "@/lib/db";
 import authConfig from "@/auth.config";
-import { isAdmin, isAllowed, markAccepted } from "@/lib/invites";
+import { isAdmin, isAllowed, markAccepted, verifyMemberPassword } from "@/lib/invites";
 import { signInEmailHtml } from "@/lib/email";
 
 // Full Auth.js instance (Node runtime — has the database adapter, so the
@@ -33,6 +34,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!res.ok) {
           throw new Error(`Resend error ${res.status}: ${await res.text()}`);
         }
+      },
+    }),
+    // Member email + password login (after they've set a password at /welcome).
+    Credentials({
+      id: "member",
+      name: "Member",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      async authorize(creds) {
+        const email = String(creds?.email ?? "").toLowerCase().trim();
+        const password = String(creds?.password ?? "");
+        if (!email || !password) return null;
+        const ok = await verifyMemberPassword(email, password);
+        return ok ? { id: email, email } : null;
       },
     }),
     // Owner (email + password) provider carried over from the edge config.

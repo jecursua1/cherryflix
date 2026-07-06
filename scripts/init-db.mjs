@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS invites (
 -- Member profile + live "now watching" presence
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS first_name TEXT;
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_id TEXT;
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_title TEXT;
 ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_at TIMESTAMPTZ;

@@ -1,5 +1,6 @@
 import { pool } from "./db";
 import { isAdmin } from "./roles";
+import { hashPassword, verifyPassword } from "./password";
 
 export { isAdmin };
 
@@ -109,6 +110,41 @@ export async function setProfile(
     `UPDATE invites SET first_name = $2, last_name = $3 WHERE email = $1`,
     [norm(email), firstName.trim(), lastName.trim()]
   );
+}
+
+/** Set name + password together (member finishes setup at /welcome). */
+export async function setProfileWithPassword(
+  email: string,
+  firstName: string,
+  lastName: string,
+  password: string
+): Promise<void> {
+  await pool.query(
+    `UPDATE invites SET first_name = $2, last_name = $3, password_hash = $4 WHERE email = $1`,
+    [norm(email), firstName.trim(), lastName.trim(), hashPassword(password)]
+  );
+}
+
+/** Verify a member's email + password for password login. */
+export async function verifyMemberPassword(
+  email: string,
+  password: string
+): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT password_hash FROM invites WHERE email = $1`,
+    [norm(email)]
+  );
+  const hash = r.rows[0]?.password_hash as string | null | undefined;
+  return verifyPassword(password, hash ?? null);
+}
+
+/** True once the member has finished setup (name + password). */
+export async function hasPassword(email: string): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM invites WHERE email = $1 AND password_hash IS NOT NULL`,
+    [norm(email)]
+  );
+  return (r.rowCount ?? 0) > 0;
 }
 
 export async function listInvites(): Promise<Invite[]> {
@@ -236,6 +272,46 @@ export async function getMembersReport(): Promise<MemberReportRow[]> {
       ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`
   );
   return r.rows as MemberReportRow[];
+}
+
+export type MemberRangeRow = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  status: string;
+  invited_at: string;
+  last_seen: string | null;
+  active: boolean;
+  watching_now: boolean;
+  views: number;
+  seconds: number;
+};
+
+/** Members report scoped to a date range (activity, views, and watch time within it). */
+export async function getMembersReportRange(
+  sinceISO: string,
+  untilISO: string
+): Promise<MemberRangeRow[]> {
+  const r = await pool.query(
+    `SELECT i.email, i.first_name, i.last_name, i.status, i.invited_at, i.last_seen,
+            (i.last_seen >= $1) AS active,
+            (i.now_watching_at > now() - interval '2 minutes') AS watching_now,
+            COALESCE((SELECT count(*) FROM watch_events w
+                       WHERE w.email = i.email AND w.watched_at >= $1 AND w.watched_at < $2), 0)::int AS views,
+            COALESCE((SELECT sum(seconds) FROM watch_time t
+                       WHERE t.email = i.email AND t.day >= $1::date
+                         AND t.day <= ($2::timestamptz - interval '1 second')::date), 0)::int AS seconds
+       FROM invites i
+      ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`,
+    [sinceISO, untilISO]
+  );
+  return r.rows as MemberRangeRow[];
+}
+
+/** Segment label for a range row. */
+export function rowSegment(r: MemberRangeRow): "active" | "inactive" | "pending" {
+  if (r.status !== "accepted") return "pending";
+  return r.active ? "active" : "inactive";
 }
 
 /** Format seconds into a compact "Xh Ym" / "Xm" label. */
