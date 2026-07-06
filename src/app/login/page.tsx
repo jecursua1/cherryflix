@@ -1,3 +1,4 @@
+import Link from "next/link";
 import MemberLoginForm from "@/components/MemberLoginForm";
 import Logo from "@/components/Logo";
 
@@ -9,9 +10,17 @@ export default async function LoginPage({
   const { email } = await searchParams;
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
+    <main className="relative flex min-h-screen items-center justify-center px-4">
+      <Link
+        href="/"
+        className="absolute left-5 top-5 text-sm text-white/60 transition hover:text-white"
+      >
+        ← Back to home
+      </Link>
       <div className="w-full max-w-sm">
-        <Logo className="mx-auto h-14 w-auto" />
+        <Link href="/" aria-label="Cherryflix home">
+          <Logo className="mx-auto h-14 w-auto" />
+        </Link>
         <p className="mt-4 text-center text-sm text-white/50">
           Invite-only streaming. Sign in with the email you were invited with.
         </p>
