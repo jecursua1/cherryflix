@@ -5,6 +5,8 @@ import {
   isAdmin,
   getMember,
   getMemberHistory,
+  getMemberSeconds,
+  formatDuration,
   displayName,
 } from "@/lib/invites";
 import { resolveRange, type RangeParams } from "@/lib/range";
@@ -52,11 +54,10 @@ export default async function MemberPage({
   }
 
   const { since, until, days, label } = resolveRange(sp);
-  const history = await getMemberHistory(
-    email,
-    since.toISOString(),
-    until.toISOString()
-  );
+  const [history, totalSeconds] = await Promise.all([
+    getMemberHistory(email, since.toISOString(), until.toISOString()),
+    getMemberSeconds(email),
+  ]);
 
   const seen = member.last_seen ? new Date(member.last_seen).getTime() : 0;
   const activeNow = seen > 0 && Date.now() - seen < 5 * 60 * 1000;
@@ -102,6 +103,9 @@ export default async function MemberPage({
                   ▶ Watching: {member.now_watching_title}
                 </span>
               )}
+              <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
+                ⏱ {formatDuration(totalSeconds)} total watch time
+              </span>
             </div>
           </div>
           <a

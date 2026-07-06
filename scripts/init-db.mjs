@@ -93,6 +93,14 @@ CREATE TABLE IF NOT EXISTS watch_events (
 );
 CREATE INDEX IF NOT EXISTS watch_events_email_time
   ON watch_events (email, watched_at DESC);
+
+-- Per-member watch time accumulated per day (seconds)
+CREATE TABLE IF NOT EXISTS watch_time (
+  email TEXT NOT NULL,
+  day DATE NOT NULL,
+  seconds INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (email, day)
+);
 `;
 
 try {

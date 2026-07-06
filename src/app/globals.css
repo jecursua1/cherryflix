@@ -27,6 +27,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes cf-pop {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.18); color: var(--cherry); }
+  100% { transform: scale(1); }
+}
+
 /* Hide scrollbars on the horizontal carousels */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

@@ -126,13 +126,15 @@ export async function getStats(): Promise<{
   pending: number;
   activeWeek: number;
   activeNow: number;
+  inactive: number;
 }> {
   const q = await pool.query(
     `SELECT
         count(*) FILTER (WHERE status = 'accepted')::int AS members,
         count(*) FILTER (WHERE status = 'invited')::int  AS pending,
         count(*) FILTER (WHERE status = 'accepted' AND last_seen > now() - interval '7 days')::int AS active_week,
-        count(*) FILTER (WHERE last_seen > now() - interval '5 minutes')::int AS active_now
+        count(*) FILTER (WHERE last_seen > now() - interval '5 minutes')::int AS active_now,
+        count(*) FILTER (WHERE status = 'accepted' AND (last_seen IS NULL OR last_seen <= now() - interval '7 days'))::int AS inactive
       FROM invites`
   );
   const row = q.rows[0] ?? {};
@@ -141,7 +143,43 @@ export async function getStats(): Promise<{
     pending: row.pending ?? 0,
     activeWeek: row.active_week ?? 0,
     activeNow: row.active_now ?? 0,
+    inactive: row.inactive ?? 0,
   };
+}
+
+export type DashboardLive = {
+  activeNow: number;
+  watchingNow: number;
+  inactive: number;
+  totalMembers: number;
+  pending: number;
+  watching: { email: string; name: string; title: string }[];
+};
+
+/** Combined snapshot for the live-polling dashboard endpoint. */
+export async function getDashboardLive(): Promise<DashboardLive> {
+  const [stats, live] = await Promise.all([getStats(), getLiveStats()]);
+  return {
+    activeNow: live.activeNow,
+    watchingNow: live.watching.length,
+    inactive: stats.inactive,
+    totalMembers: stats.members,
+    pending: stats.pending,
+    watching: live.watching.map((w) => ({
+      email: w.email,
+      name: displayName(w),
+      title: w.now_watching_title ?? "",
+    })),
+  };
+}
+
+/** Total watch time (seconds) accumulated by a member. */
+export async function getMemberSeconds(email: string): Promise<number> {
+  const r = await pool.query(
+    `SELECT COALESCE(sum(seconds), 0)::int AS n FROM watch_time WHERE email = $1`,
+    [norm(email)]
+  );
+  return r.rows[0]?.n ?? 0;
 }
 
 /** Who is online right now and who is actively watching (with what). */
@@ -174,22 +212,40 @@ export type MemberReportRow = {
   last_seen: string | null;
   active_week: boolean;
   active_now: boolean;
+  watching_now: boolean;
+  now_watching_title: string | null;
   views_90d: number;
+  total_seconds: number;
+  seconds_7d: number;
 };
 
-/** One row per member with computed activity flags — used by the CSV export. */
+/** One row per member with computed activity + watch-time — used by the report. */
 export async function getMembersReport(): Promise<MemberReportRow[]> {
   const r = await pool.query(
     `SELECT i.email, i.first_name, i.last_name, i.status, i.invited_at, i.last_seen,
-            (i.last_seen > now() - interval '7 days')   AS active_week,
-            (i.last_seen > now() - interval '5 minutes') AS active_now,
-            count(w.*) FILTER (WHERE w.watched_at > now() - interval '90 days')::int AS views_90d
+            (i.last_seen > now() - interval '7 days')    AS active_week,
+            (i.last_seen > now() - interval '5 minutes')  AS active_now,
+            (i.now_watching_at > now() - interval '2 minutes') AS watching_now,
+            i.now_watching_title,
+            COALESCE((SELECT count(*) FROM watch_events w
+                       WHERE w.email = i.email AND w.watched_at > now() - interval '90 days'), 0)::int AS views_90d,
+            COALESCE((SELECT sum(seconds) FROM watch_time t WHERE t.email = i.email), 0)::int AS total_seconds,
+            COALESCE((SELECT sum(seconds) FROM watch_time t
+                       WHERE t.email = i.email AND t.day > current_date - 7), 0)::int AS seconds_7d
        FROM invites i
-       LEFT JOIN watch_events w ON w.email = i.email
-      GROUP BY i.email
       ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`
   );
   return r.rows as MemberReportRow[];
+}
+
+/** Format seconds into a compact "Xh Ym" / "Xm" label. */
+export function formatDuration(seconds: number): string {
+  const s = Math.max(0, Math.round(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m`;
+  return "0m";
 }
 
 // --------------------------- watch tracking --------------------------------
@@ -233,6 +289,13 @@ export async function heartbeat(
                 now_watching_title = $3, now_watching_at = now()
           WHERE email = $1`,
         [norm(email), watchId, title ?? null]
+      );
+      // Accumulate ~one heartbeat interval of watch time for today.
+      await pool.query(
+        `INSERT INTO watch_time (email, day, seconds)
+         VALUES ($1, current_date, 25)
+         ON CONFLICT (email, day) DO UPDATE SET seconds = watch_time.seconds + 25`,
+        [norm(email)]
       );
     } else {
       await pool.query(`UPDATE invites SET last_seen = now() WHERE email = $1`, [
