@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { signOutAction } from "@/app/actions";
+import Heartbeat from "@/components/Heartbeat";
 
 export default async function Navbar() {
   const session = await auth();
@@ -38,6 +39,7 @@ export default async function Navbar() {
           </form>
         </div>
       </div>
+      <Heartbeat />
     </header>
   );
 }

@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS users (
   PRIMARY KEY (id)
 );
 
--- Cherryflix invite allowlist -------------------------------------------
+-- Cherryflix members / invite allowlist ---------------------------------
 CREATE TABLE IF NOT EXISTS invites (
   email TEXT PRIMARY KEY,
   status TEXT NOT NULL DEFAULT 'invited',
@@ -73,6 +73,26 @@ CREATE TABLE IF NOT EXISTS invites (
   accepted_at TIMESTAMPTZ,
   last_seen TIMESTAMPTZ
 );
+
+-- Member profile + live "now watching" presence
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_id TEXT;
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_title TEXT;
+ALTER TABLE invites ADD COLUMN IF NOT EXISTS now_watching_at TIMESTAMPTZ;
+
+-- Per-member watch history
+CREATE TABLE IF NOT EXISTS watch_events (
+  id SERIAL PRIMARY KEY,
+  email TEXT NOT NULL,
+  watch_id TEXT NOT NULL,
+  title_slug TEXT,
+  title_name TEXT,
+  episode_label TEXT,
+  watched_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS watch_events_email_time
+  ON watch_events (email, watched_at DESC);
 `;
 
 try {

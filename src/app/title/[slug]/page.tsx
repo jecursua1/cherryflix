@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBySlug } from "@/lib/content";
+import { requireProfile } from "@/lib/gate";
 import Navbar from "@/components/Navbar";
 
 export default async function TitlePage({
@@ -8,6 +9,7 @@ export default async function TitlePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  await requireProfile();
   const { slug } = await params;
   const title = getBySlug(slug);
   if (!title) notFound();

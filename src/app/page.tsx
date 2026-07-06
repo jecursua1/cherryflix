@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { touchUser } from "@/lib/invites";
+import { touchUser, isAdmin, hasProfile } from "@/lib/invites";
 import { getFeatured, getRows, getByType, type Title } from "@/lib/content";
 import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
@@ -17,8 +18,14 @@ export default async function Home({
   // Guests see the public marketing landing page.
   if (!session?.user) return <Landing />;
 
+  // Members must set up their name before watching.
+  const email = session.user.email;
+  if (email && !isAdmin(email) && !(await hasProfile(email))) {
+    redirect("/welcome");
+  }
+
   const { type } = await searchParams;
-  if (session.user.email) await touchUser(session.user.email);
+  if (email) await touchUser(email);
 
   const filtered: Title[] | null =
     type === "anime" || type === "movie" ? getByType(type) : null;

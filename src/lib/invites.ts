@@ -9,19 +9,44 @@ export type Invite = {
   invited_at: string;
   accepted_at: string | null;
   last_seen: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  now_watching_id: string | null;
+  now_watching_title: string | null;
+  now_watching_at: string | null;
 };
+
+export type WatchEvent = {
+  watch_id: string;
+  title_slug: string | null;
+  title_name: string | null;
+  episode_label: string | null;
+  watched_at: string;
+};
+
+const norm = (email: string) => email.toLowerCase().trim();
+
+/** Full name if set, otherwise the email. */
+export function displayName(m: {
+  first_name?: string | null;
+  last_name?: string | null;
+  email: string;
+}): string {
+  const name = [m.first_name, m.last_name].filter(Boolean).join(" ").trim();
+  return name || m.email;
+}
 
 /** Anyone who was invited (or is an admin) is allowed to sign in. */
 export async function isAllowed(email: string): Promise<boolean> {
   if (isAdmin(email)) return true;
   const r = await pool.query("SELECT 1 FROM invites WHERE email = $1", [
-    email.toLowerCase().trim(),
+    norm(email),
   ]);
   return (r.rowCount ?? 0) > 0;
 }
 
 export async function addInvite(email: string): Promise<string> {
-  const e = email.toLowerCase().trim();
+  const e = norm(email);
   await pool.query(
     `INSERT INTO invites (email, status)
      VALUES ($1, 'invited')
@@ -36,7 +61,7 @@ export async function markAccepted(email: string): Promise<void> {
     `UPDATE invites
         SET status = 'accepted', accepted_at = now(), last_seen = now()
       WHERE email = $1 AND status <> 'accepted'`,
-    [email.toLowerCase().trim()]
+    [norm(email)]
   );
 }
 
@@ -44,7 +69,7 @@ export async function markAccepted(email: string): Promise<void> {
 export async function touchUser(email: string): Promise<void> {
   try {
     await pool.query(`UPDATE invites SET last_seen = now() WHERE email = $1`, [
-      email.toLowerCase().trim(),
+      norm(email),
     ]);
   } catch {
     // never let presence-tracking break a page render
@@ -52,14 +77,44 @@ export async function touchUser(email: string): Promise<void> {
 }
 
 export async function removeInvite(email: string): Promise<void> {
-  await pool.query("DELETE FROM invites WHERE email = $1", [
-    email.toLowerCase().trim(),
-  ]);
+  await pool.query("DELETE FROM invites WHERE email = $1", [norm(email)]);
+  await pool.query("DELETE FROM watch_events WHERE email = $1", [norm(email)]);
+}
+
+export async function getMember(email: string): Promise<Invite | null> {
+  const r = await pool.query(
+    `SELECT email, status, invited_at, accepted_at, last_seen,
+            first_name, last_name, now_watching_id, now_watching_title, now_watching_at
+       FROM invites WHERE email = $1`,
+    [norm(email)]
+  );
+  return (r.rows[0] as Invite) ?? null;
+}
+
+/** True once the member has completed their first/last name setup. */
+export async function hasProfile(email: string): Promise<boolean> {
+  const r = await pool.query(
+    `SELECT 1 FROM invites WHERE email = $1 AND first_name IS NOT NULL AND first_name <> ''`,
+    [norm(email)]
+  );
+  return (r.rowCount ?? 0) > 0;
+}
+
+export async function setProfile(
+  email: string,
+  firstName: string,
+  lastName: string
+): Promise<void> {
+  await pool.query(
+    `UPDATE invites SET first_name = $2, last_name = $3 WHERE email = $1`,
+    [norm(email), firstName.trim(), lastName.trim()]
+  );
 }
 
 export async function listInvites(): Promise<Invite[]> {
   const r = await pool.query(
-    `SELECT email, status, invited_at, accepted_at, last_seen
+    `SELECT email, status, invited_at, accepted_at, last_seen,
+            first_name, last_name, now_watching_id, now_watching_title, now_watching_at
        FROM invites
       ORDER BY (status = 'accepted') DESC, invited_at DESC`
   );
@@ -70,12 +125,14 @@ export async function getStats(): Promise<{
   members: number;
   pending: number;
   activeWeek: number;
+  activeNow: number;
 }> {
   const q = await pool.query(
     `SELECT
         count(*) FILTER (WHERE status = 'accepted')::int AS members,
         count(*) FILTER (WHERE status = 'invited')::int  AS pending,
-        count(*) FILTER (WHERE status = 'accepted' AND last_seen > now() - interval '7 days')::int AS active_week
+        count(*) FILTER (WHERE status = 'accepted' AND last_seen > now() - interval '7 days')::int AS active_week,
+        count(*) FILTER (WHERE last_seen > now() - interval '5 minutes')::int AS active_now
       FROM invites`
   );
   const row = q.rows[0] ?? {};
@@ -83,5 +140,122 @@ export async function getStats(): Promise<{
     members: row.members ?? 0,
     pending: row.pending ?? 0,
     activeWeek: row.active_week ?? 0,
+    activeNow: row.active_now ?? 0,
   };
+}
+
+/** Who is online right now and who is actively watching (with what). */
+export async function getLiveStats(): Promise<{
+  activeNow: number;
+  watching: Invite[];
+}> {
+  const active = await pool.query(
+    `SELECT count(*)::int AS n FROM invites WHERE last_seen > now() - interval '5 minutes'`
+  );
+  const watching = await pool.query(
+    `SELECT email, first_name, last_name, now_watching_id, now_watching_title, now_watching_at,
+            status, invited_at, accepted_at, last_seen
+       FROM invites
+      WHERE now_watching_at > now() - interval '2 minutes'
+      ORDER BY now_watching_at DESC`
+  );
+  return {
+    activeNow: active.rows[0]?.n ?? 0,
+    watching: watching.rows as Invite[],
+  };
+}
+
+export type MemberReportRow = {
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  status: string;
+  invited_at: string;
+  last_seen: string | null;
+  active_week: boolean;
+  active_now: boolean;
+  views_90d: number;
+};
+
+/** One row per member with computed activity flags — used by the CSV export. */
+export async function getMembersReport(): Promise<MemberReportRow[]> {
+  const r = await pool.query(
+    `SELECT i.email, i.first_name, i.last_name, i.status, i.invited_at, i.last_seen,
+            (i.last_seen > now() - interval '7 days')   AS active_week,
+            (i.last_seen > now() - interval '5 minutes') AS active_now,
+            count(w.*) FILTER (WHERE w.watched_at > now() - interval '90 days')::int AS views_90d
+       FROM invites i
+       LEFT JOIN watch_events w ON w.email = i.email
+      GROUP BY i.email
+      ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`
+  );
+  return r.rows as MemberReportRow[];
+}
+
+// --------------------------- watch tracking --------------------------------
+
+/** Record a viewing. Deduped within 30 min so refreshes don't spam history. */
+export async function logWatch(
+  email: string,
+  ev: {
+    watchId: string;
+    titleSlug?: string;
+    titleName?: string;
+    episodeLabel?: string;
+  }
+): Promise<void> {
+  try {
+    await pool.query(
+      `INSERT INTO watch_events (email, watch_id, title_slug, title_name, episode_label)
+       SELECT $1, $2, $3, $4, $5
+       WHERE NOT EXISTS (
+         SELECT 1 FROM watch_events
+          WHERE email = $1 AND watch_id = $2 AND watched_at > now() - interval '30 minutes'
+       )`,
+      [norm(email), ev.watchId, ev.titleSlug ?? null, ev.titleName ?? null, ev.episodeLabel ?? null]
+    );
+  } catch {
+    // history logging must never break playback
+  }
+}
+
+/** Presence + "now watching" heartbeat (called periodically from the client). */
+export async function heartbeat(
+  email: string,
+  watchId?: string,
+  title?: string
+): Promise<void> {
+  try {
+    if (watchId) {
+      await pool.query(
+        `UPDATE invites
+            SET last_seen = now(), now_watching_id = $2,
+                now_watching_title = $3, now_watching_at = now()
+          WHERE email = $1`,
+        [norm(email), watchId, title ?? null]
+      );
+    } else {
+      await pool.query(`UPDATE invites SET last_seen = now() WHERE email = $1`, [
+        norm(email),
+      ]);
+    }
+  } catch {
+    // ignore presence failures
+  }
+}
+
+/** A member's watch history within a date range (max 90 days enforced by caller). */
+export async function getMemberHistory(
+  email: string,
+  sinceISO: string,
+  untilISO: string
+): Promise<WatchEvent[]> {
+  const r = await pool.query(
+    `SELECT watch_id, title_slug, title_name, episode_label, watched_at
+       FROM watch_events
+      WHERE email = $1 AND watched_at >= $2 AND watched_at < $3
+      ORDER BY watched_at DESC`,
+    [norm(email), sinceISO, untilISO]
+  );
+  return r.rows as WatchEvent[];
 }

@@ -1,9 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
-import { isAdmin, isAllowed, addInvite, removeInvite } from "@/lib/invites";
+import {
+  isAdmin,
+  isAllowed,
+  addInvite,
+  removeInvite,
+  setProfile,
+} from "@/lib/invites";
 
 export type ActionState = { ok: boolean; message: string };
 
@@ -112,6 +119,23 @@ export async function ownerLoginAction(
     throw error;
   }
   return { ok: true, message: "Signed in." };
+}
+
+/** New member sets up their first + last name before they can watch. */
+export async function saveProfileAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return { ok: false, message: "You're not signed in." };
+  const first = String(formData.get("firstName") ?? "").trim();
+  const last = String(formData.get("lastName") ?? "").trim();
+  if (!first || !last) {
+    return { ok: false, message: "Please enter your first and last name." };
+  }
+  await setProfile(email, first, last);
+  redirect("/");
 }
 
 export async function signOutAction(): Promise<void> {

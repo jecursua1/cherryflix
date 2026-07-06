@@ -1,17 +1,24 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { signOutAction } from "@/app/actions";
-import { isAdmin, getStats, listInvites } from "@/lib/invites";
+import {
+  isAdmin,
+  getStats,
+  getLiveStats,
+  listInvites,
+  displayName,
+  type Invite,
+} from "@/lib/invites";
 import InviteForm from "@/components/InviteForm";
 import RemoveButton from "@/components/RemoveButton";
+import AutoRefresh from "@/components/AutoRefresh";
+import AdminHeader from "@/components/AdminHeader";
 
 export const dynamic = "force-dynamic";
 
 function fmt(d: string | null): string {
   if (!d) return "—";
-  const date = new Date(d);
-  return date.toLocaleDateString(undefined, {
+  return new Date(d).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -19,79 +26,119 @@ function fmt(d: string | null): string {
 }
 
 export default async function AdminPage() {
-  // Middleware already gates this, but double-check server-side.
   const session = await auth();
   if (!isAdmin(session?.user?.email)) redirect("/");
 
-  let stats = { members: 0, pending: 0, activeWeek: 0 };
-  let invites: Awaited<ReturnType<typeof listInvites>> = [];
+  let stats = { members: 0, pending: 0, activeWeek: 0, activeNow: 0 };
+  let live = { activeNow: 0, watching: [] as Invite[] };
+  let invites: Invite[] = [];
   let dbError = false;
   try {
-    [stats, invites] = await Promise.all([getStats(), listInvites()]);
+    [stats, live, invites] = await Promise.all([
+      getStats(),
+      getLiveStats(),
+      listInvites(),
+    ]);
   } catch {
     dbError = true;
   }
 
   return (
     <>
-      <header className="border-b border-white/5 bg-background/80 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-4 sm:px-8">
-          <Link href="/admin" className="text-2xl font-extrabold tracking-tight">
-            <span className="text-cherry">Cherry</span>
-            <span className="text-white">flix</span>
-            <span className="ml-2 text-sm font-normal text-white/40">Admin</span>
-          </Link>
-          <form action={signOutAction}>
-            <button
-              type="submit"
-              className="text-sm text-white/60 hover:text-white"
-            >
-              Sign out
-            </button>
-          </form>
-        </div>
-      </header>
+      <AutoRefresh seconds={20} />
+      <AdminHeader />
+
       <main className="mx-auto w-full max-w-[1100px] flex-1 px-4 py-10 sm:px-8">
-        <h1 className="text-3xl font-extrabold">Owner Dashboard</h1>
-        <p className="mt-1 text-sm text-white/50">
-          Signed in as {session?.user?.email}. Only you can see this page.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-extrabold">Owner Dashboard</h1>
+            <p className="mt-1 text-sm text-white/50">
+              {session?.user?.email} · live counts refresh automatically
+            </p>
+          </div>
+          <a
+            href="/api/admin/export"
+            className="rounded-md border border-white/15 px-4 py-2 text-sm text-white/80 hover:bg-white/10"
+          >
+            ⬇ Export report (CSV)
+          </a>
+        </div>
 
         {dbError && (
           <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-300">
-            ⚠️ Can&apos;t reach the database. Set a valid <code>DATABASE_URL</code>{" "}
-            and run <code>node --env-file=.env.local scripts/init-db.mjs</code> to
-            enable invites and member stats.
+            ⚠️ Can&apos;t reach the database. Check <code>DATABASE_URL</code> and run
+            the DB init script.
           </div>
         )}
 
-        {/* Stats */}
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Stat label="Active members" value={stats.members} accent />
-          <Stat label="Pending invites" value={stats.pending} />
-          <Stat label="Active this week" value={stats.activeWeek} />
-        </div>
+        {/* LIVE */}
+        <section className="mt-8">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+            </span>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-white/60">
+              Live now
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <Stat label="Active now" value={live.activeNow} accent />
+            <Stat label="Watching now" value={live.watching.length} />
+            <Stat label="Active this week" value={stats.activeWeek} />
+            <Stat label="Total members" value={stats.members} />
+          </div>
 
-        {/* Invite */}
+          <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-5">
+            <h3 className="mb-3 text-sm font-semibold text-white/70">
+              Watching right now
+            </h3>
+            {live.watching.length === 0 ? (
+              <p className="text-sm text-white/40">No one is watching at the moment.</p>
+            ) : (
+              <ul className="divide-y divide-white/5">
+                {live.watching.map((w) => (
+                  <li key={w.email} className="flex items-center justify-between py-2.5">
+                    <Link
+                      href={`/admin/member/${encodeURIComponent(w.email)}`}
+                      className="font-medium text-white hover:text-cherry"
+                    >
+                      {displayName(w)}
+                    </Link>
+                    <span className="flex items-center gap-2 text-sm text-white/60">
+                      <span className="text-emerald-400">▶</span>
+                      {w.now_watching_title ?? "—"}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+
+        {/* INVITE */}
         <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] p-6">
           <h2 className="text-lg font-bold">Invite someone</h2>
           <p className="mb-4 mt-1 text-sm text-white/50">
-            Enter their email. They&apos;ll get a &quot;Sign in to
-            Cherryflix&quot; link — one click and they can watch.
+            Enter their email. They&apos;ll get a sign-in link, then set up their
+            name before watching.
           </p>
           <InviteForm />
         </div>
 
-        {/* Members table */}
+        {/* MEMBERS */}
         <div className="mt-10">
           <h2 className="mb-4 text-lg font-bold">
             Members &amp; invites ({invites.length})
+            <span className="ml-2 text-sm font-normal text-white/40">
+              — click a member to see their watch history
+            </span>
           </h2>
           <div className="overflow-hidden rounded-xl border border-white/10">
             <table className="w-full text-left text-sm">
               <thead className="bg-white/5 text-xs uppercase tracking-wide text-white/50">
                 <tr>
-                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Member</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 hidden sm:table-cell">Invited</th>
                   <th className="px-4 py-3 hidden sm:table-cell">Last seen</th>
@@ -107,8 +154,18 @@ export default async function AdminPage() {
                   </tr>
                 )}
                 {invites.map((inv) => (
-                  <tr key={inv.email} className="border-t border-white/5">
-                    <td className="px-4 py-3 font-medium">{inv.email}</td>
+                  <tr key={inv.email} className="border-t border-white/5 hover:bg-white/[0.03]">
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/admin/member/${encodeURIComponent(inv.email)}`}
+                        className="font-medium text-white hover:text-cherry"
+                      >
+                        {displayName(inv)}
+                      </Link>
+                      {(inv.first_name || inv.last_name) && (
+                        <div className="text-xs text-white/40">{inv.email}</div>
+                      )}
+                    </td>
                     <td className="px-4 py-3">
                       {inv.status === "accepted" ? (
                         <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-400">
@@ -151,10 +208,8 @@ function Stat({
 }) {
   return (
     <div
-      className={`rounded-xl border p-6 ${
-        accent
-          ? "border-cherry/40 bg-cherry/10"
-          : "border-white/10 bg-white/[0.03]"
+      className={`rounded-xl border p-5 ${
+        accent ? "border-cherry/40 bg-cherry/10" : "border-white/10 bg-white/[0.03]"
       }`}
     >
       <p className="text-sm text-white/60">{label}</p>
