@@ -1,4 +1,5 @@
 import LoginForm from "@/components/LoginForm";
+import Logo from "@/components/Logo";
 
 export default async function LoginPage({
   searchParams,
@@ -10,10 +11,8 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <h1 className="text-center text-4xl font-extrabold">
-          <span className="text-cherry">Cherry</span>flix
-        </h1>
-        <p className="mt-2 text-center text-sm text-white/50">
+        <Logo className="mx-auto h-11 w-auto" />
+        <p className="mt-4 text-center text-sm text-white/50">
           Invite-only streaming. Sign in with the email you were invited with.
         </p>
 

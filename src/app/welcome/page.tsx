@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isAdmin, hasProfile } from "@/lib/invites";
 import WelcomeForm from "@/components/WelcomeForm";
+import Logo from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,8 @@ export default async function WelcomePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <h1 className="text-center text-3xl font-extrabold">
-          Welcome to <span className="text-cherry">Cherry</span>flix
-        </h1>
+        <Logo className="mx-auto h-10 w-auto" />
+        <h1 className="mt-4 text-center text-2xl font-extrabold">Welcome!</h1>
         <p className="mt-2 text-center text-sm text-white/60">
           One quick step — tell us your name so we can set up your profile.
         </p>
