@@ -2,7 +2,7 @@ import NextAuth from "next-auth";
 import PostgresAdapter from "@auth/pg-adapter";
 import { pool } from "@/lib/db";
 import authConfig from "@/auth.config";
-import { isAllowed, markAccepted } from "@/lib/invites";
+import { isAdmin, isAllowed, markAccepted } from "@/lib/invites";
 
 // Full Auth.js instance (runs in the Node runtime — has the database adapter).
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -14,8 +14,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       const email = user.email?.toLowerCase();
       if (!email) return false;
+      // Owner/admin is always allowed and needs no database round-trip.
+      if (isAdmin(email)) return true;
       const ok = await isAllowed(email);
-      if (ok) await markAccepted(email);
+      if (ok) {
+        try {
+          await markAccepted(email);
+        } catch {
+          // don't block sign-in if the presence update fails
+        }
+      }
       return ok;
     },
   },

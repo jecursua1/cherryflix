@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import { isAdmin, isAllowed, addInvite, removeInvite } from "@/lib/invites";
 
@@ -73,6 +74,25 @@ export async function loginAction(
     return { ok: false, message: "Could not send the sign-in email. Please try again." };
   }
   return { ok: true, message: "Check your inbox — we sent you a sign-in link." };
+}
+
+/** Owner sign-in with email + password (no email/DB needed). */
+export async function ownerLoginAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  try {
+    await signIn("owner", { email, password, redirectTo: "/" });
+  } catch (error) {
+    // A successful sign-in throws a Next.js redirect — let it propagate.
+    if (error instanceof AuthError) {
+      return { ok: false, message: "Wrong owner email or password." };
+    }
+    throw error;
+  }
+  return { ok: true, message: "Signed in." };
 }
 
 export async function signOutAction(): Promise<void> {

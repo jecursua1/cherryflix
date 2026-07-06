@@ -22,7 +22,14 @@ export default async function AdminPage() {
   const session = await auth();
   if (!isAdmin(session?.user?.email)) redirect("/");
 
-  const [stats, invites] = await Promise.all([getStats(), listInvites()]);
+  let stats = { members: 0, pending: 0, activeWeek: 0 };
+  let invites: Awaited<ReturnType<typeof listInvites>> = [];
+  let dbError = false;
+  try {
+    [stats, invites] = await Promise.all([getStats(), listInvites()]);
+  } catch {
+    dbError = true;
+  }
 
   return (
     <>
@@ -32,6 +39,14 @@ export default async function AdminPage() {
         <p className="mt-1 text-sm text-white/50">
           Signed in as {session?.user?.email}. Only you can see this page.
         </p>
+
+        {dbError && (
+          <div className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-300">
+            ⚠️ Can&apos;t reach the database. Set a valid <code>DATABASE_URL</code>{" "}
+            and run <code>node --env-file=.env.local scripts/init-db.mjs</code> to
+            enable invites and member stats.
+          </div>
+        )}
 
         {/* Stats */}
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">

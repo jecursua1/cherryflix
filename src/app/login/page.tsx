@@ -1,4 +1,5 @@
 import LoginForm from "@/components/LoginForm";
+import OwnerLoginForm from "@/components/OwnerLoginForm";
 
 export default async function LoginPage({
   searchParams,
@@ -35,6 +36,7 @@ export default async function LoginPage({
                 No password needed. We&apos;ll email you a magic link. Only
                 invited emails can enter.
               </p>
+              <OwnerLoginForm email="jerico.ursua1@gmail.com" />
             </>
           )}
         </div>

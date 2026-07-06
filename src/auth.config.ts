@@ -1,16 +1,34 @@
 import type { NextAuthConfig } from "next-auth";
 import Resend from "next-auth/providers/resend";
+import Credentials from "next-auth/providers/credentials";
 import { isAdmin } from "@/lib/roles";
 
 // Edge-safe portion of the Auth.js config (no database adapter here so it can
 // run inside middleware). The adapter + db-backed callbacks live in auth.ts.
 export const authConfig = {
   providers: [
+    // Magic-link login for invited members (requires Resend).
     Resend({
       apiKey: process.env.RESEND_API_KEY,
-      // e.g. "Cherryflix <onboarding@resend.dev>" for testing,
-      // or "Cherryflix <no-reply@yourdomain.com>" once your domain is verified.
       from: process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>",
+    }),
+    // Owner login (email + password) — lets you in without email/DB setup.
+    Credentials({
+      id: "owner",
+      name: "Owner",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+      },
+      authorize(creds) {
+        const email = String(creds?.email ?? "").toLowerCase().trim();
+        const password = String(creds?.password ?? "");
+        const expected = process.env.OWNER_PASSWORD ?? "";
+        if (isAdmin(email) && expected && password === expected) {
+          return { id: email, email, name: "Owner" };
+        }
+        return null;
+      },
     }),
   ],
   pages: {
@@ -19,6 +37,7 @@ export const authConfig = {
     error: "/login",
   },
   session: { strategy: "jwt" },
+  trustHost: true,
   callbacks: {
     jwt({ token }) {
       token.isAdmin = isAdmin(token.email as string | undefined);
