@@ -46,6 +46,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(creds) {
         const email = String(creds?.email ?? "").toLowerCase().trim();
         if (!email) return null;
+        // SECURITY: admins must NEVER sign in through the passwordless member
+        // login. They can only enter via /admin-login (OWNER_PASSWORD). This
+        // stops anyone who knows the admin email from taking over the account.
+        if (isAdmin(email)) return null;
         const ok = await isAllowed(email);
         return ok ? { id: email, email } : null;
       },

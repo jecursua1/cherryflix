@@ -76,6 +76,10 @@ export async function memberLoginAction(
   if (!EMAIL_RE.test(email)) {
     return { ok: false, message: "Please enter a valid email address." };
   }
+  // Owner accounts can't use the passwordless login — they use /admin-login.
+  if (isAdmin(email)) {
+    return { ok: false, message: "This is an owner account. Please use the owner login." };
+  }
   if (!(await isAllowed(email))) {
     return {
       ok: false,
