@@ -83,13 +83,31 @@ export async function ownerLoginAction(
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const expected = process.env.OWNER_PASSWORD ?? "";
+
+  // Pre-validate so wrong credentials show an inline error here instead of
+  // bouncing to /login (Auth.js redirects failed sign-ins to the error page).
+  if (!expected) {
+    return {
+      ok: false,
+      message:
+        "Owner password isn't set on the server. Add OWNER_PASSWORD to .env.local and restart.",
+    };
+  }
+  if (!isAdmin(email)) {
+    return { ok: false, message: "That email isn't an owner account." };
+  }
+  if (password !== expected) {
+    return { ok: false, message: "Wrong owner password." };
+  }
+
   try {
     // Owner lands on the management dashboard, not the streaming home.
     await signIn("owner", { email, password, redirectTo: "/admin" });
   } catch (error) {
     // A successful sign-in throws a Next.js redirect — let it propagate.
     if (error instanceof AuthError) {
-      return { ok: false, message: "Wrong owner email or password." };
+      return { ok: false, message: "Sign in failed. Please try again." };
     }
     throw error;
   }
