@@ -15,7 +15,11 @@ export default auth((req) => {
     path === "/" ||
     path === "/login" ||
     path === "/admin-login" ||
-    path.startsWith("/api/auth");
+    path.startsWith("/api/auth") ||
+    // Static SEO / verification files served from /public
+    path.endsWith(".html") ||
+    path.endsWith(".txt") ||
+    path.endsWith(".xml");
 
   if (isPublic) {
     if (isLoggedIn && path === "/login") {
