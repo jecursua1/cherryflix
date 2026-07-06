@@ -19,7 +19,7 @@ export default function MemberLoginForm({ prefill }: { prefill?: string }) {
         required
         defaultValue={prefill}
         placeholder="you@email.com"
-        className={inputCls}
+        className={`${inputCls} text-center`}
       />
       <input
         name="passcode"
