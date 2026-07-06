@@ -1,15 +1,45 @@
+import nodemailer from "nodemailer";
+
+const SUBJECT = "You're invited to Cherryflix 🍒";
+
 /**
- * Send an invitation email via Resend. Returns whether it actually delivered so
- * the caller can tell the admin honestly (Resend's sandbox sender can only email
- * the Resend account owner until a domain is verified).
+ * Send an invitation email. Prefers Gmail SMTP (GMAIL_USER + GMAIL_APP_PASSWORD)
+ * which can email ANY recipient with no domain needed; falls back to Resend.
+ * Returns whether it actually delivered so the caller can be honest to the admin.
  */
 export async function sendInviteEmail(
   to: string,
   loginUrl: string
 ): Promise<{ ok: boolean; error?: string }> {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const html = signInEmailHtml(loginUrl);
+
+  // Preferred: send from the owner's Gmail (works to anyone, no domain needed).
+  if (gmailUser && gmailPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: "smtp.gmail.com",
+        port: 465,
+        secure: true,
+        auth: { user: gmailUser, pass: gmailPass.replace(/\s+/g, "") },
+      });
+      await transporter.sendMail({
+        from: `Cherryflix <${gmailUser}>`,
+        to,
+        subject: SUBJECT,
+        html,
+      });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  // Fallback: Resend (sandbox sender only reaches the Resend account owner).
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>";
-  if (!apiKey) return { ok: false, error: "RESEND_API_KEY not set" };
+  if (!apiKey) return { ok: false, error: "No email sender configured" };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -17,12 +47,7 @@ export async function sendInviteEmail(
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        from,
-        to,
-        subject: "You're invited to Cherryflix 🍒",
-        html: signInEmailHtml(loginUrl),
-      }),
+      body: JSON.stringify({ from, to, subject: SUBJECT, html }),
     });
     if (!res.ok) return { ok: false, error: await res.text() };
     return { ok: true };
