@@ -141,6 +141,25 @@ export async function saveProfileAction(
   redirect("/");
 }
 
+/** Member edits their name from the account page (stays on the page). */
+export async function updateNameAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return { ok: false, message: "You're not signed in." };
+  const first = String(formData.get("firstName") ?? "").trim();
+  const last = String(formData.get("lastName") ?? "").trim();
+  if (!first || !last) {
+    return { ok: false, message: "Please enter your first and last name." };
+  }
+  await setProfile(email, first, last);
+  revalidatePath("/");
+  revalidatePath("/account");
+  return { ok: true, message: "Saved! Your name has been updated." };
+}
+
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
 }

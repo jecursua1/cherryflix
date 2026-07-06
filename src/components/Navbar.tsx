@@ -1,13 +1,16 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { signOutAction } from "@/app/actions";
+import { getMember } from "@/lib/invites";
 import Heartbeat from "@/components/Heartbeat";
 import Logo from "@/components/Logo";
 
 export default async function Navbar() {
   const session = await auth();
   const email = session?.user?.email ?? "";
-  const initial = email.charAt(0).toUpperCase() || "?";
+  const member = email ? await getMember(email) : null;
+  const firstName = member?.first_name ?? "";
+  const initial = (firstName.charAt(0) || email.charAt(0) || "?").toUpperCase();
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-background/80 border-b border-white/5">
@@ -23,12 +26,20 @@ export default async function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
-          <div
-            className="grid h-8 w-8 place-items-center rounded-md bg-cherry text-sm font-bold text-white"
-            title={email}
+          <Link
+            href="/account"
+            className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-white/5"
+            title="Account settings"
           >
-            {initial}
-          </div>
+            <span className="grid h-8 w-8 place-items-center rounded-md bg-cherry text-sm font-bold text-white">
+              {initial}
+            </span>
+            {firstName && (
+              <span className="hidden text-sm text-white/80 sm:inline">
+                {firstName}
+              </span>
+            )}
+          </Link>
           <form action={signOutAction}>
             <button
               type="submit"
