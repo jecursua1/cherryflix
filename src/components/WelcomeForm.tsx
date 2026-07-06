@@ -26,21 +26,23 @@ export default function WelcomeForm() {
         <div className="flex flex-col gap-3 sm:flex-row">
           <input
             name="passcode"
+            type="password"
             inputMode="numeric"
             pattern="\d{4}"
             maxLength={4}
             required
-            placeholder="4-digit passcode"
-            className={`${inputCls} tracking-[0.5em]`}
+            placeholder="Passcode"
+            className={`${inputCls} text-center tracking-widest`}
           />
           <input
             name="confirmPasscode"
+            type="password"
             inputMode="numeric"
             pattern="\d{4}"
             maxLength={4}
             required
-            placeholder="Confirm passcode"
-            className={`${inputCls} tracking-[0.5em]`}
+            placeholder="Confirm"
+            className={`${inputCls} text-center tracking-widest`}
           />
         </div>
         <p className="mt-2 text-xs text-white/40">

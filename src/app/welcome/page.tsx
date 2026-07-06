@@ -19,7 +19,8 @@ export default async function WelcomePage() {
         <Logo className="mx-auto h-12 w-auto" />
         <h1 className="mt-4 text-center text-2xl font-extrabold">Welcome!</h1>
         <p className="mt-2 text-center text-sm text-white/60">
-          One quick step — tell us your name so we can set up your profile.
+          One quick step. Set your name and passcode so we can create your
+          profile.
         </p>
 
         <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6">
