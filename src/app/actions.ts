@@ -145,6 +145,13 @@ export async function saveProfileAction(
     return { ok: false, message: "Please enter your first and last name." };
   }
   await setProfile(email, first, last);
+
+  const image = String(formData.get("image") ?? "");
+  const validImage =
+    image.startsWith("data:image/") || image.startsWith("/avatars/");
+  if (validImage && image.length <= 300_000) {
+    await setImage(email, image);
+  }
   redirect("/");
 }
 
@@ -176,11 +183,13 @@ export async function updateAvatarAction(
   const email = session?.user?.email;
   if (!email) return { ok: false, message: "You're not signed in." };
   const image = String(formData.get("image") ?? "");
-  if (image && !image.startsWith("data:image/")) {
+  const valid =
+    !image || image.startsWith("data:image/") || image.startsWith("/avatars/");
+  if (!valid) {
     return { ok: false, message: "That doesn't look like an image." };
   }
   if (image.length > 300_000) {
-    return { ok: false, message: "Image is too large — try a smaller photo." };
+    return { ok: false, message: "Image is too large. Try a smaller photo." };
   }
   await setImage(email, image || null);
   revalidatePath("/");

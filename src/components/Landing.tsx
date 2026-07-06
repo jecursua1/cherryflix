@@ -8,7 +8,7 @@ import Logo from "./Logo";
 const FEATURES = [
   {
     title: "Anime + movies",
-    desc: "Full series with every episode, plus a growing library of films — all in one place.",
+    desc: "Full series with every episode, plus a growing library of films, all in one place.",
     icon: "🎬",
   },
   {
@@ -23,7 +23,7 @@ const FEATURES = [
   },
   {
     title: "One click to watch",
-    desc: "No passwords. We email you a secure magic link — click it and you're in.",
+    desc: "No passwords to remember. Just enter your invited email and you're in.",
     icon: "⚡",
   },
 ];
@@ -71,7 +71,7 @@ export default function Landing() {
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-white/75 sm:text-xl">
             Stream your favorite anime series and movies in your own private,
-            ad-free space — anytime, on any device.
+            ad-free space, anytime, on any device.
           </p>
           <p className="mt-8 text-sm text-white/60">
             Already invited? Enter your email to sign in.

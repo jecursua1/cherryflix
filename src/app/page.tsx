@@ -64,7 +64,7 @@ export default async function Home({
 function Footer() {
   return (
     <footer className="border-t border-white/5 px-4 py-8 text-center text-xs text-white/40 sm:px-8">
-      <span className="text-cherry font-bold">Cherry</span>flix — a private
+      <span className="text-cherry font-bold">Cherry</span>flix, a private
       streaming space. Invite-only.
     </footer>
   );

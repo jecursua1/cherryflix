@@ -9,11 +9,11 @@ const ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "How do I get access to Cherryflix?",
-    a: "Cherryflix is invite-only. Once the owner adds your email, you'll get an invitation and can sign in with that same email address — no lengthy sign-up forms and no waiting.",
+    a: "Cherryflix is invite-only. Once the owner adds your email, you'll get an invitation and can sign in with that same email address, with no lengthy sign-up forms and no waiting.",
   },
   {
     q: "How do I sign in to Cherryflix?",
-    a: "Signing in is simple: go to the login page and enter the email address you were invited with. There's no password to remember — if you've been invited, you're in and ready to watch.",
+    a: "Signing in is simple: go to the login page and enter the email address you were invited with. There's no password to remember. If you've been invited, you're in and ready to watch.",
   },
   {
     q: "What anime and movies can I watch on Cherryflix?",
@@ -21,7 +21,7 @@ const ITEMS: { q: string; a: string }[] = [
   },
   {
     q: "Can I watch Cherryflix on my phone, laptop, or TV?",
-    a: "Yes. Cherryflix works in any modern web browser, so you can watch anime and movies on your phone, tablet, laptop, or smart TV. Just sign in and press play — no app to install.",
+    a: "Yes. Cherryflix works in any modern web browser, so you can watch anime and movies on your phone, tablet, laptop, or smart TV. Just sign in and press play, with no app to install.",
   },
   {
     q: "Is Cherryflix ad-free?",

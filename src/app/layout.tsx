@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.AUTH_URL ?? "https://cherryflix.vercel.app"),
   title: {
-    default: "Cherryflix — Watch Anime & Movies Online | Private Streaming",
+    default: "Cherryflix: Watch Anime & Movies Online | Private Streaming",
     template: "%s | Cherryflix",
   },
   description:
-    "Cherryflix is your private, ad-free space to stream anime series and movies online. Invite-only access — watch your favorites anywhere, on any device, anytime.",
+    "Cherryflix is your private, ad-free space to stream anime series and movies online. Invite-only access, so you can watch your favorites anywhere, on any device, anytime.",
   keywords: [
     "watch anime online",
     "anime streaming",
@@ -35,13 +35,13 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     siteName: "Cherryflix",
-    title: "Cherryflix — Watch Anime & Movies Online",
+    title: "Cherryflix: Watch Anime & Movies Online",
     description:
       "Your private, ad-free space to stream anime series and movies. Invite-only, watch anywhere, anytime.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Cherryflix — Watch Anime & Movies Online",
+    title: "Cherryflix: Watch Anime & Movies Online",
     description:
       "Your private, ad-free space to stream anime series and movies. Invite-only, watch anywhere.",
   },

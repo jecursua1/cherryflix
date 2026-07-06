@@ -107,18 +107,26 @@ export async function setProfile(
   firstName: string,
   lastName: string
 ): Promise<void> {
+  const e = norm(email);
+  const status = isAdmin(e) ? "owner" : "accepted";
   await pool.query(
-    `UPDATE invites SET first_name = $2, last_name = $3 WHERE email = $1`,
-    [norm(email), firstName.trim(), lastName.trim()]
+    `INSERT INTO invites (email, status, first_name, last_name)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (email) DO UPDATE SET first_name = $3, last_name = $4`,
+    [e, status, firstName.trim(), lastName.trim()]
   );
 }
 
-/** Set (or clear with null) the member's profile image (stored as a data URL). */
+/** Set (or clear with null) the profile image. Upserts so the owner works too. */
 export async function setImage(email: string, image: string | null): Promise<void> {
-  await pool.query(`UPDATE invites SET image = $2 WHERE email = $1`, [
-    norm(email),
-    image,
-  ]);
+  const e = norm(email);
+  const status = isAdmin(e) ? "owner" : "accepted";
+  await pool.query(
+    `INSERT INTO invites (email, status, image)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (email) DO UPDATE SET image = $3`,
+    [e, status, image]
+  );
 }
 
 /** Set name + password together (member finishes setup at /welcome). */
@@ -161,6 +169,7 @@ export async function listInvites(): Promise<Invite[]> {
     `SELECT email, status, invited_at, accepted_at, last_seen,
             first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at
        FROM invites
+      WHERE status <> 'owner'
       ORDER BY (status = 'accepted') DESC, invited_at DESC`
   );
   return r.rows as Invite[];
@@ -178,7 +187,7 @@ export async function getStats(): Promise<{
         count(*) FILTER (WHERE status = 'accepted')::int AS members,
         count(*) FILTER (WHERE status = 'invited')::int  AS pending,
         count(*) FILTER (WHERE status = 'accepted' AND last_seen > now() - interval '7 days')::int AS active_week,
-        count(*) FILTER (WHERE last_seen > now() - interval '5 minutes')::int AS active_now,
+        count(*) FILTER (WHERE last_seen > now() - interval '5 minutes' AND status <> 'owner')::int AS active_now,
         count(*) FILTER (WHERE status = 'accepted' AND (last_seen IS NULL OR last_seen <= now() - interval '7 days'))::int AS inactive
       FROM invites`
   );
@@ -234,13 +243,14 @@ export async function getLiveStats(): Promise<{
   watching: Invite[];
 }> {
   const active = await pool.query(
-    `SELECT count(*)::int AS n FROM invites WHERE last_seen > now() - interval '5 minutes'`
+    `SELECT count(*)::int AS n FROM invites
+      WHERE last_seen > now() - interval '5 minutes' AND status <> 'owner'`
   );
   const watching = await pool.query(
     `SELECT email, first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at,
             status, invited_at, accepted_at, last_seen
        FROM invites
-      WHERE now_watching_at > now() - interval '2 minutes'
+      WHERE now_watching_at > now() - interval '2 minutes' AND status <> 'owner'
       ORDER BY now_watching_at DESC`
   );
   return {
@@ -279,6 +289,7 @@ export async function getMembersReport(): Promise<MemberReportRow[]> {
             COALESCE((SELECT sum(seconds) FROM watch_time t
                        WHERE t.email = i.email AND t.day > current_date - 7), 0)::int AS seconds_7d
        FROM invites i
+      WHERE i.status <> 'owner'
       ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`
   );
   return r.rows as MemberReportRow[];
@@ -312,6 +323,7 @@ export async function getMembersReportRange(
                        WHERE t.email = i.email AND t.day >= $1::date
                          AND t.day <= ($2::timestamptz - interval '1 second')::date), 0)::int AS seconds
        FROM invites i
+      WHERE i.status <> 'owner'
       ORDER BY (i.status = 'accepted') DESC, i.invited_at DESC`,
     [sinceISO, untilISO]
   );
