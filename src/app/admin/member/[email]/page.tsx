@@ -11,6 +11,7 @@ import {
 } from "@/lib/invites";
 import { resolveRange, type RangeParams } from "@/lib/range";
 import AdminHeader from "@/components/AdminHeader";
+import PasscodeForm from "@/components/PasscodeForm";
 import Avatar from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
@@ -124,6 +125,18 @@ export default async function MemberPage({
           >
             ⬇ Export history (CSV)
           </a>
+        </div>
+
+        {/* Passcode (owner can view + reset) */}
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-white/50">
+            Passcode
+          </h2>
+          <p className="mb-3 text-xs text-white/40">
+            The member uses this with their email to sign in. Reset it here if
+            they forget it.
+          </p>
+          <PasscodeForm email={member.email} current={member.passcode} />
         </div>
 
         {/* Range selector */}

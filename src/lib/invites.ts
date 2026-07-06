@@ -13,6 +13,7 @@ export type Invite = {
   first_name: string | null;
   last_name: string | null;
   image: string | null;
+  passcode: string | null;
   now_watching_id: string | null;
   now_watching_title: string | null;
   now_watching_at: string | null;
@@ -86,7 +87,7 @@ export async function removeInvite(email: string): Promise<void> {
 export async function getMember(email: string): Promise<Invite | null> {
   const r = await pool.query(
     `SELECT email, status, invited_at, accepted_at, last_seen,
-            first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at
+            first_name, last_name, image, passcode, now_watching_id, now_watching_title, now_watching_at
        FROM invites WHERE email = $1`,
     [norm(email)]
   );
@@ -129,6 +130,14 @@ export async function setImage(email: string, image: string | null): Promise<voi
   );
 }
 
+/** Set a member's 4-digit passcode. Stored as-is so the owner can view/reset it. */
+export async function setPasscode(email: string, passcode: string): Promise<void> {
+  await pool.query(`UPDATE invites SET passcode = $2 WHERE email = $1`, [
+    norm(email),
+    passcode,
+  ]);
+}
+
 /** Set name + password together (member finishes setup at /welcome). */
 export async function setProfileWithPassword(
   email: string,
@@ -167,7 +176,7 @@ export async function hasPassword(email: string): Promise<boolean> {
 export async function listInvites(): Promise<Invite[]> {
   const r = await pool.query(
     `SELECT email, status, invited_at, accepted_at, last_seen,
-            first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at
+            first_name, last_name, image, passcode, now_watching_id, now_watching_title, now_watching_at
        FROM invites
       WHERE status <> 'owner'
       ORDER BY (status = 'accepted') DESC, invited_at DESC`

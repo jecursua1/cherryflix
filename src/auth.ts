@@ -4,7 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import PostgresAdapter from "@auth/pg-adapter";
 import { pool } from "@/lib/db";
 import authConfig from "@/auth.config";
-import { isAdmin, isAllowed, markAccepted } from "@/lib/invites";
+import { isAdmin, isAllowed, markAccepted, getMember } from "@/lib/invites";
 import { signInEmailHtml } from "@/lib/email";
 
 // Full Auth.js instance (Node runtime — has the database adapter, so the
@@ -42,16 +42,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       name: "Member",
       credentials: {
         email: { label: "Email", type: "email" },
+        passcode: { label: "Passcode", type: "password" },
       },
       async authorize(creds) {
         const email = String(creds?.email ?? "").toLowerCase().trim();
+        const passcode = String(creds?.passcode ?? "");
         if (!email) return null;
-        // SECURITY: admins must NEVER sign in through the passwordless member
-        // login. They can only enter via /admin-login (OWNER_PASSWORD). This
-        // stops anyone who knows the admin email from taking over the account.
+        // SECURITY: admins must NEVER sign in through the member login. They can
+        // only enter via /admin-login (OWNER_PASSWORD). This stops anyone who
+        // knows the admin email from taking over the account.
         if (isAdmin(email)) return null;
-        const ok = await isAllowed(email);
-        return ok ? { id: email, email } : null;
+        const member = await getMember(email);
+        if (!member) return null; // not invited
+        // If a passcode has been set, it must match. (First login has none yet.)
+        if (member.passcode && passcode !== member.passcode) return null;
+        return { id: email, email };
       },
     }),
     // Owner (email + password) provider carried over from the edge config.

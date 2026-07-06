@@ -111,6 +111,7 @@ export default async function AdminPage() {
                 <tr>
                   <th className="px-4 py-3">Member</th>
                   <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Passcode</th>
                   <th className="px-4 py-3 hidden sm:table-cell">Invited</th>
                   <th className="px-4 py-3 hidden sm:table-cell">Last seen</th>
                   <th className="px-4 py-3"></th>
@@ -119,7 +120,7 @@ export default async function AdminPage() {
               <tbody>
                 {invites.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-white/40">
+                    <td colSpan={6} className="px-4 py-10 text-center text-white/40">
                       No one invited yet. Add your first member above.
                     </td>
                   </tr>
@@ -162,6 +163,9 @@ export default async function AdminPage() {
                         >
                           {status}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono tracking-widest text-white/70">
+                        {inv.passcode ?? "—"}
                       </td>
                       <td className="px-4 py-3 hidden text-white/60 sm:table-cell">
                         {fmt(inv.invited_at)}

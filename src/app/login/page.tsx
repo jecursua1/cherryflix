@@ -1,6 +1,11 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import MemberLoginForm from "@/components/MemberLoginForm";
 import Logo from "@/components/Logo";
+import Avatar from "@/components/Avatar";
+import { verifyRemember, REMEMBER_COOKIE } from "@/lib/remember";
+import { getMember, displayName, isAdmin } from "@/lib/invites";
+import { rememberLoginAction } from "@/app/actions";
 
 export default async function LoginPage({
   searchParams,
@@ -8,6 +13,16 @@ export default async function LoginPage({
   searchParams: Promise<{ email?: string }>;
 }) {
   const { email } = await searchParams;
+
+  // "Remember me on this device" — offer one-click sign-in.
+  const jar = await cookies();
+  const remEmail = verifyRemember(jar.get(REMEMBER_COOKIE)?.value);
+  let remembered: { email: string; name: string; image: string | null } | null =
+    null;
+  if (remEmail && !isAdmin(remEmail)) {
+    const m = await getMember(remEmail);
+    if (m) remembered = { email: remEmail, name: displayName(m), image: m.image };
+  }
 
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4">
@@ -25,10 +40,39 @@ export default async function LoginPage({
           Invite-only streaming. Sign in with the email you were invited with.
         </p>
 
-        <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6">
+        {remembered && (
+          <form
+            action={rememberLoginAction}
+            className="mt-8 rounded-xl border border-cherry/30 bg-cherry/10 p-4"
+          >
+            <button
+              type="submit"
+              className="flex w-full items-center gap-3 text-left"
+            >
+              <Avatar image={remembered.image} name={remembered.name} size={44} />
+              <span className="min-w-0">
+                <span className="block font-semibold text-white">
+                  Continue as {remembered.name}
+                </span>
+                <span className="block truncate text-xs text-white/50">
+                  {remembered.email}
+                </span>
+              </span>
+              <span className="ml-auto text-cherry">→</span>
+            </button>
+          </form>
+        )}
+
+        <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.03] p-6">
+          {remembered && (
+            <p className="mb-3 text-center text-xs uppercase tracking-wide text-white/30">
+              Or sign in
+            </p>
+          )}
           <MemberLoginForm prefill={email} />
           <p className="mt-4 text-center text-xs text-white/40">
-            No password needed. Only emails invited by the owner can enter.
+            First time? Just enter your email to set up your passcode. Only
+            emails invited by the owner can enter.
           </p>
         </div>
       </div>

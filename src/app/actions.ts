@@ -2,17 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import {
   isAdmin,
-  isAllowed,
   addInvite,
   removeInvite,
   setProfile,
   setImage,
+  setPasscode,
+  getMember,
 } from "@/lib/invites";
 import { sendInviteEmail, sendContactEmail } from "@/lib/email";
+import {
+  signRemember,
+  verifyRemember,
+  REMEMBER_COOKIE,
+  REMEMBER_MAX_AGE,
+} from "@/lib/remember";
+
+const rememberCookieOpts = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+  path: "/",
+};
 
 export type ActionState = { ok: boolean; message: string };
 
@@ -67,27 +82,51 @@ export async function removeAction(
   return { ok: true, message: `Removed ${email}.` };
 }
 
-/** Member signs in with their invited email (no password needed). */
+/** Member signs in with their invited email + 4-digit passcode. */
 export async function memberLoginAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const passcode = String(formData.get("passcode") ?? "").trim();
+  const remember = formData.get("remember") != null;
+
   if (!EMAIL_RE.test(email)) {
     return { ok: false, message: "Please enter a valid email address." };
   }
-  // Owner accounts can't use the passwordless login — they use /admin-login.
+  // Owner accounts can't use the member login. They use /admin-login.
   if (isAdmin(email)) {
     return { ok: false, message: "This is an owner account. Please use the owner login." };
   }
-  if (!(await isAllowed(email))) {
+  const member = await getMember(email);
+  if (!member) {
     return {
       ok: false,
       message: "This email hasn't been invited yet. Ask the owner for access.",
     };
   }
+  // If a passcode was set, it must match. (First-time members have none yet.)
+  if (member.passcode) {
+    if (!/^\d{4}$/.test(passcode)) {
+      return { ok: false, message: "Enter your 4-digit passcode." };
+    }
+    if (passcode !== member.passcode) {
+      return { ok: false, message: "Wrong passcode. Ask the owner if you forgot it." };
+    }
+  }
+
+  const jar = await cookies();
+  if (remember) {
+    jar.set(REMEMBER_COOKIE, signRemember(email), {
+      ...rememberCookieOpts,
+      maxAge: REMEMBER_MAX_AGE,
+    });
+  } else {
+    jar.delete(REMEMBER_COOKIE);
+  }
+
   try {
-    await signIn("member", { email, redirectTo: "/" });
+    await signIn("member", { email, passcode, redirectTo: "/" });
   } catch (error) {
     if (error instanceof AuthError) {
       return { ok: false, message: "Sign in failed. Please try again." };
@@ -95,6 +134,40 @@ export async function memberLoginAction(
     throw error;
   }
   return { ok: true, message: "" };
+}
+
+/** One-click sign-in for a remembered device (no typing). */
+export async function rememberLoginAction(): Promise<void> {
+  const jar = await cookies();
+  const email = verifyRemember(jar.get(REMEMBER_COOKIE)?.value);
+  if (!email || isAdmin(email)) redirect("/login");
+  const member = await getMember(email);
+  if (!member) redirect("/login");
+  await signIn("member", {
+    email,
+    passcode: member.passcode ?? "",
+    redirectTo: "/",
+  });
+}
+
+/** Owner sets or resets a member's passcode (in case they forget it). */
+export async function setMemberPasscodeAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await auth();
+  if (!isAdmin(session?.user?.email)) {
+    return { ok: false, message: "Not authorized." };
+  }
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const passcode = String(formData.get("passcode") ?? "").trim();
+  if (!/^\d{4}$/.test(passcode)) {
+    return { ok: false, message: "Passcode must be exactly 4 digits." };
+  }
+  await setPasscode(email, passcode);
+  revalidatePath(`/admin/member/${email}`);
+  revalidatePath("/admin");
+  return { ok: true, message: `Passcode updated to ${passcode}.` };
 }
 
 /** Owner sign-in with email + password (no email/DB needed). */
@@ -145,10 +218,19 @@ export async function saveProfileAction(
   if (!email) return { ok: false, message: "You're not signed in." };
   const first = String(formData.get("firstName") ?? "").trim();
   const last = String(formData.get("lastName") ?? "").trim();
+  const passcode = String(formData.get("passcode") ?? "").trim();
+  const confirm = String(formData.get("confirmPasscode") ?? "").trim();
   if (!first || !last) {
     return { ok: false, message: "Please enter your first and last name." };
   }
+  if (!/^\d{4}$/.test(passcode)) {
+    return { ok: false, message: "Set a 4-digit passcode (numbers only)." };
+  }
+  if (passcode !== confirm) {
+    return { ok: false, message: "Passcodes don't match." };
+  }
   await setProfile(email, first, last);
+  await setPasscode(email, passcode);
 
   const image = String(formData.get("image") ?? "");
   const validImage =
@@ -239,5 +321,6 @@ export async function contactAction(
 }
 
 export async function signOutAction(): Promise<void> {
+  (await cookies()).delete(REMEMBER_COOKIE);
   await signOut({ redirectTo: "/login" });
 }
