@@ -11,6 +11,7 @@ import {
 } from "@/lib/invites";
 import { resolveRange, type RangeParams } from "@/lib/range";
 import AdminHeader from "@/components/AdminHeader";
+import Avatar from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -80,10 +81,18 @@ export default async function MemberPage({
 
         {/* Member header */}
         <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold">{displayName(member)}</h1>
-            <p className="mt-1 text-sm text-white/50">{member.email}</p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <div className="flex items-start gap-4">
+            <Avatar
+              image={member.image}
+              name={displayName(member)}
+              size={56}
+              rounded="rounded-full"
+              className="text-xl"
+            />
+            <div>
+              <h1 className="text-3xl font-extrabold">{displayName(member)}</h1>
+              <p className="mt-1 text-sm text-white/50">{member.email}</p>
+              <div className="mt-3 flex flex-wrap gap-2 text-xs">
               <span
                 className={`rounded-full px-2 py-0.5 ${
                   member.status === "accepted"
@@ -106,6 +115,7 @@ export default async function MemberPage({
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-white/70">
                 ⏱ {formatDuration(totalSeconds)} total watch time
               </span>
+              </div>
             </div>
           </div>
           <a

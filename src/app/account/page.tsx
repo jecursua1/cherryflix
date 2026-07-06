@@ -1,8 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { getMember } from "@/lib/invites";
+import { getMember, displayName } from "@/lib/invites";
 import Navbar from "@/components/Navbar";
 import AccountForm from "@/components/AccountForm";
+import ProfileImageForm from "@/components/ProfileImageForm";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,18 @@ export default async function AccountPage() {
         <p className="mt-1 text-sm text-white/50">{email}</p>
 
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <h2 className="mb-1 text-lg font-bold">Profile photo</h2>
+          <p className="mb-4 text-sm text-white/50">
+            Add a photo so friends recognize you. Stored privately — no upload
+            service.
+          </p>
+          <ProfileImageForm
+            current={member?.image ?? null}
+            name={member ? displayName(member) : email}
+          />
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
           <h2 className="mb-1 text-lg font-bold">Your name</h2>
           <p className="mb-4 text-sm text-white/50">
             This is how you appear on Cherryflix.

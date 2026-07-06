@@ -10,6 +10,7 @@ import {
   addInvite,
   removeInvite,
   setProfile,
+  setImage,
 } from "@/lib/invites";
 
 export type ActionState = { ok: boolean; message: string };
@@ -158,6 +159,30 @@ export async function updateNameAction(
   revalidatePath("/");
   revalidatePath("/account");
   return { ok: true, message: "Saved! Your name has been updated." };
+}
+
+/** Update or remove the member's profile photo (small data-URL stored in Neon). */
+export async function updateAvatarAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return { ok: false, message: "You're not signed in." };
+  const image = String(formData.get("image") ?? "");
+  if (image && !image.startsWith("data:image/")) {
+    return { ok: false, message: "That doesn't look like an image." };
+  }
+  if (image.length > 300_000) {
+    return { ok: false, message: "Image is too large — try a smaller photo." };
+  }
+  await setImage(email, image || null);
+  revalidatePath("/");
+  revalidatePath("/account");
+  return {
+    ok: true,
+    message: image ? "Profile photo updated." : "Profile photo removed.",
+  };
 }
 
 export async function signOutAction(): Promise<void> {

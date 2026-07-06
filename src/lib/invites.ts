@@ -12,6 +12,7 @@ export type Invite = {
   last_seen: string | null;
   first_name: string | null;
   last_name: string | null;
+  image: string | null;
   now_watching_id: string | null;
   now_watching_title: string | null;
   now_watching_at: string | null;
@@ -85,7 +86,7 @@ export async function removeInvite(email: string): Promise<void> {
 export async function getMember(email: string): Promise<Invite | null> {
   const r = await pool.query(
     `SELECT email, status, invited_at, accepted_at, last_seen,
-            first_name, last_name, now_watching_id, now_watching_title, now_watching_at
+            first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at
        FROM invites WHERE email = $1`,
     [norm(email)]
   );
@@ -110,6 +111,14 @@ export async function setProfile(
     `UPDATE invites SET first_name = $2, last_name = $3 WHERE email = $1`,
     [norm(email), firstName.trim(), lastName.trim()]
   );
+}
+
+/** Set (or clear with null) the member's profile image (stored as a data URL). */
+export async function setImage(email: string, image: string | null): Promise<void> {
+  await pool.query(`UPDATE invites SET image = $2 WHERE email = $1`, [
+    norm(email),
+    image,
+  ]);
 }
 
 /** Set name + password together (member finishes setup at /welcome). */
@@ -150,7 +159,7 @@ export async function hasPassword(email: string): Promise<boolean> {
 export async function listInvites(): Promise<Invite[]> {
   const r = await pool.query(
     `SELECT email, status, invited_at, accepted_at, last_seen,
-            first_name, last_name, now_watching_id, now_watching_title, now_watching_at
+            first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at
        FROM invites
       ORDER BY (status = 'accepted') DESC, invited_at DESC`
   );
@@ -189,7 +198,7 @@ export type DashboardLive = {
   inactive: number;
   totalMembers: number;
   pending: number;
-  watching: { email: string; name: string; title: string }[];
+  watching: { email: string; name: string; title: string; image: string | null }[];
 };
 
 /** Combined snapshot for the live-polling dashboard endpoint. */
@@ -205,6 +214,7 @@ export async function getDashboardLive(): Promise<DashboardLive> {
       email: w.email,
       name: displayName(w),
       title: w.now_watching_title ?? "",
+      image: w.image ?? null,
     })),
   };
 }
@@ -227,7 +237,7 @@ export async function getLiveStats(): Promise<{
     `SELECT count(*)::int AS n FROM invites WHERE last_seen > now() - interval '5 minutes'`
   );
   const watching = await pool.query(
-    `SELECT email, first_name, last_name, now_watching_id, now_watching_title, now_watching_at,
+    `SELECT email, first_name, last_name, image, now_watching_id, now_watching_title, now_watching_at,
             status, invited_at, accepted_at, last_seen
        FROM invites
       WHERE now_watching_at > now() - interval '2 minutes'

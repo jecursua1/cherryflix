@@ -36,7 +36,7 @@ export default function Landing() {
       {/* NAV */}
       <header className="absolute top-0 z-30 w-full">
         <div className="mx-auto flex max-w-[1400px] items-center justify-between px-5 py-5 sm:px-8">
-          <Logo className="h-9 w-auto sm:h-10" />
+          <Logo className="h-12 w-auto sm:h-14" />
           <Link
             href="/login"
             className="rounded-md bg-cherry px-5 py-2 font-semibold text-white transition hover:bg-cherry-dark"
@@ -143,7 +143,7 @@ export default function Landing() {
 
       {/* FOOTER */}
       <footer className="border-t border-white/5 px-5 py-10 text-center text-sm text-white/40 sm:px-8">
-        <Logo className="mx-auto h-8 w-auto" />
+        <Logo className="mx-auto h-11 w-auto" />
         <p className="mt-3">A private streaming space · Invite-only</p>
       </footer>
     </div>

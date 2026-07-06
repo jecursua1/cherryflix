@@ -12,6 +12,7 @@ import InviteForm from "@/components/InviteForm";
 import RemoveButton from "@/components/RemoveButton";
 import AdminHeader from "@/components/AdminHeader";
 import LiveDashboard from "@/components/LiveDashboard";
+import Avatar from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,7 @@ export default async function AdminPage() {
     inactive: 0,
     totalMembers: 0,
     pending: 0,
-    watching: [] as { email: string; name: string; title: string }[],
+    watching: [] as { email: string; name: string; title: string; image: string | null }[],
   };
   let invites: Invite[] = [];
   let dbError = false;
@@ -136,9 +137,13 @@ export default async function AdminPage() {
                           href={`/admin/member/${encodeURIComponent(inv.email)}`}
                           className="flex items-center gap-3"
                         >
-                          <span className="grid h-8 w-8 place-items-center rounded-full bg-cherry/20 text-xs font-bold text-cherry">
-                            {name.charAt(0).toUpperCase()}
-                          </span>
+                          <Avatar
+                            image={inv.image}
+                            name={name}
+                            size={32}
+                            rounded="rounded-full"
+                            className="text-xs"
+                          />
                           <span>
                             <span className="block font-medium text-white hover:text-cherry">
                               {name}

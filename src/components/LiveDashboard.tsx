@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Avatar from "./Avatar";
 
 type Live = {
   activeNow: number;
@@ -9,7 +10,7 @@ type Live = {
   inactive: number;
   totalMembers: number;
   pending: number;
-  watching: { email: string; name: string; title: string }[];
+  watching: { email: string; name: string; title: string; image: string | null }[];
 };
 
 export default function LiveDashboard({ initial }: { initial: Live }) {
@@ -87,9 +88,13 @@ export default function LiveDashboard({ initial }: { initial: Live }) {
                   href={`/admin/member/${encodeURIComponent(w.email)}`}
                   className="flex items-center gap-2 font-medium text-white hover:text-cherry"
                 >
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-cherry/20 text-xs font-bold text-cherry">
-                    {w.name.charAt(0).toUpperCase()}
-                  </span>
+                  <Avatar
+                    image={w.image}
+                    name={w.name}
+                    size={28}
+                    rounded="rounded-full"
+                    className="text-xs"
+                  />
                   {w.name}
                 </Link>
                 <span className="flex items-center gap-2 truncate text-sm text-white/60">

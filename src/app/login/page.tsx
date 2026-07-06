@@ -11,7 +11,7 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
-        <Logo className="mx-auto h-11 w-auto" />
+        <Logo className="mx-auto h-14 w-auto" />
         <p className="mt-4 text-center text-sm text-white/50">
           Invite-only streaming. Sign in with the email you were invited with.
         </p>

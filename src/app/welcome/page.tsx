@@ -16,7 +16,7 @@ export default async function WelcomePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <Logo className="mx-auto h-10 w-auto" />
+        <Logo className="mx-auto h-12 w-auto" />
         <h1 className="mt-4 text-center text-2xl font-extrabold">Welcome!</h1>
         <p className="mt-2 text-center text-sm text-white/60">
           One quick step — tell us your name so we can set up your profile.
