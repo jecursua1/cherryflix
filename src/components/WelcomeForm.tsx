@@ -17,26 +17,12 @@ export default function WelcomeForm() {
         <input name="firstName" required placeholder="First name" className={inputCls} />
         <input name="lastName" required placeholder="Last name" className={inputCls} />
       </div>
-      <input
-        name="password"
-        type="password"
-        required
-        placeholder="Create a password (min 6 characters)"
-        className={inputCls}
-      />
-      <input
-        name="confirm"
-        type="password"
-        required
-        placeholder="Confirm password"
-        className={inputCls}
-      />
       <button
         type="submit"
         disabled={pending}
         className="w-full rounded-md bg-cherry px-4 py-3 font-semibold text-white transition hover:bg-cherry-dark disabled:opacity-60"
       >
-        {pending ? "Saving…" : "Save & start watching"}
+        {pending ? "Saving…" : "Start watching"}
       </button>
       {state.message && !state.ok && (
         <p className="text-sm text-red-400">{state.message}</p>

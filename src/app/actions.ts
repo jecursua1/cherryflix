@@ -6,9 +6,10 @@ import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import {
   isAdmin,
+  isAllowed,
   addInvite,
   removeInvite,
-  setProfileWithPassword,
+  setProfile,
 } from "@/lib/invites";
 
 export type ActionState = { ok: boolean; message: string };
@@ -59,21 +60,26 @@ export async function removeAction(
   return { ok: true, message: `Removed ${email}.` };
 }
 
-/** Member signs in with their registered email + password. */
+/** Member signs in with their invited email (no password needed). */
 export async function memberLoginAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const password = String(formData.get("password") ?? "");
-  if (!EMAIL_RE.test(email) || !password) {
-    return { ok: false, message: "Enter your email and password." };
+  if (!EMAIL_RE.test(email)) {
+    return { ok: false, message: "Please enter a valid email address." };
+  }
+  if (!(await isAllowed(email))) {
+    return {
+      ok: false,
+      message: "This email hasn't been invited yet. Ask the owner for access.",
+    };
   }
   try {
-    await signIn("member", { email, password, redirectTo: "/" });
+    await signIn("member", { email, redirectTo: "/" });
   } catch (error) {
     if (error instanceof AuthError) {
-      return { ok: false, message: "Wrong email or password." };
+      return { ok: false, message: "Sign in failed. Please try again." };
     }
     throw error;
   }
@@ -128,18 +134,10 @@ export async function saveProfileAction(
   if (!email) return { ok: false, message: "You're not signed in." };
   const first = String(formData.get("firstName") ?? "").trim();
   const last = String(formData.get("lastName") ?? "").trim();
-  const password = String(formData.get("password") ?? "");
-  const confirm = String(formData.get("confirm") ?? "");
   if (!first || !last) {
     return { ok: false, message: "Please enter your first and last name." };
   }
-  if (password.length < 6) {
-    return { ok: false, message: "Password must be at least 6 characters." };
-  }
-  if (password !== confirm) {
-    return { ok: false, message: "Passwords do not match." };
-  }
-  await setProfileWithPassword(email, first, last, password);
+  await setProfile(email, first, last);
   redirect("/");
 }
 

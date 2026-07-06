@@ -18,13 +18,6 @@ export default function MemberLoginForm({ prefill }: { prefill?: string }) {
         placeholder="you@email.com"
         className="w-full rounded-md border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/40 outline-none focus:border-cherry"
       />
-      <input
-        name="password"
-        type="password"
-        required
-        placeholder="Password"
-        className="w-full rounded-md border border-white/15 bg-white/5 px-4 py-3 text-white placeholder-white/40 outline-none focus:border-cherry"
-      />
       <button
         type="submit"
         disabled={pending}
