@@ -14,12 +14,16 @@ export default auth((req) => {
   const isPublic =
     path === "/" ||
     path === "/login" ||
-    path === "/owner" ||
+    path === "/admin-login" ||
     path.startsWith("/api/auth");
 
   if (isPublic) {
-    if (isLoggedIn && (path === "/login" || path === "/owner")) {
+    if (isLoggedIn && path === "/login") {
       return NextResponse.redirect(new URL("/", nextUrl));
+    }
+    if (isLoggedIn && path === "/admin-login") {
+      // Already signed in — send admins to the dashboard, others home.
+      return NextResponse.redirect(new URL(isAdmin ? "/admin" : "/", nextUrl));
     }
     return NextResponse.next();
   }

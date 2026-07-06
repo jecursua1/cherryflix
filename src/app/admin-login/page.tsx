@@ -1,12 +1,12 @@
 import OwnerLoginForm from "@/components/OwnerLoginForm";
 
-// Secret owner-only sign-in page. Not linked anywhere; protected by OWNER_PASSWORD.
+// Secret admin/owner sign-in page. Not linked anywhere; protected by OWNER_PASSWORD.
 export const metadata = {
-  title: "Cherryflix",
+  title: "Cherryflix Admin",
   robots: { index: false, follow: false },
 };
 
-export default function OwnerPage() {
+export default function AdminLoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-sm">
@@ -14,7 +14,7 @@ export default function OwnerPage() {
           <span className="text-cherry">Cherry</span>flix
         </h1>
         <p className="mt-2 text-center text-xs uppercase tracking-widest text-white/40">
-          Owner access
+          Admin access
         </p>
 
         <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.03] p-6">

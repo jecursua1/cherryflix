@@ -84,7 +84,8 @@ export async function ownerLoginAction(
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = String(formData.get("password") ?? "");
   try {
-    await signIn("owner", { email, password, redirectTo: "/" });
+    // Owner lands on the management dashboard, not the streaming home.
+    await signIn("owner", { email, password, redirectTo: "/admin" });
   } catch (error) {
     // A successful sign-in throws a Next.js redirect — let it propagate.
     if (error instanceof AuthError) {
