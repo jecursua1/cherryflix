@@ -12,6 +12,7 @@ import {
   setProfile,
   setImage,
 } from "@/lib/invites";
+import { sendInviteEmail } from "@/lib/email";
 
 export type ActionState = { ok: boolean; message: string };
 
@@ -32,18 +33,23 @@ export async function inviteAction(
   }
 
   await addInvite(email);
-  try {
-    // Sends the invitee a magic sign-in link ("accept & watch").
-    await signIn("resend", { email, redirect: false, redirectTo: "/" });
-  } catch {
-    revalidatePath("/admin");
+
+  // Grant is what matters (login is email-only). Try to email them a link too.
+  const base = process.env.AUTH_URL || "https://cherryflix.vercel.app";
+  const loginUrl = `${base}/login?email=${encodeURIComponent(email)}`;
+  const sent = await sendInviteEmail(email, loginUrl);
+  revalidatePath("/admin");
+
+  if (sent.ok) {
     return {
       ok: true,
-      message: `Added ${email} to the allowlist, but the invite email failed to send. Check your RESEND_API_KEY / EMAIL_FROM.`,
+      message: `Invite email sent to ${email}. They can sign in with their email.`,
     };
   }
-  revalidatePath("/admin");
-  return { ok: true, message: `Invite sent to ${email}.` };
+  return {
+    ok: true,
+    message: `${email} now has access — but the email couldn't be sent automatically (verify a domain in Resend to email anyone). Just share this link with them: ${base}/login`,
+  };
 }
 
 /** Admin removes someone's access. */

@@ -86,8 +86,8 @@ export default async function AdminPage() {
         <div className="mt-10 rounded-2xl border border-white/10 bg-gradient-to-br from-cherry/[0.07] to-white/[0.02] p-6">
           <h2 className="text-lg font-bold">Invite someone</h2>
           <p className="mb-4 mt-1 text-sm text-white/50">
-            Enter their email. They&apos;ll get a sign-in link, then set up their
-            name before watching.
+            Enter their email to grant access. They can sign in with that email —
+            we&apos;ll also email them the link if Resend is set up.
           </p>
           <InviteForm />
         </div>

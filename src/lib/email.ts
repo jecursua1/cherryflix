@@ -1,3 +1,36 @@
+/**
+ * Send an invitation email via Resend. Returns whether it actually delivered so
+ * the caller can tell the admin honestly (Resend's sandbox sender can only email
+ * the Resend account owner until a domain is verified).
+ */
+export async function sendInviteEmail(
+  to: string,
+  loginUrl: string
+): Promise<{ ok: boolean; error?: string }> {
+  const apiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM ?? "Cherryflix <onboarding@resend.dev>";
+  if (!apiKey) return { ok: false, error: "RESEND_API_KEY not set" };
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: "You're invited to Cherryflix 🍒",
+        html: signInEmailHtml(loginUrl),
+      }),
+    });
+    if (!res.ok) return { ok: false, error: await res.text() };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
+
 // Branded HTML for the Cherryflix magic-link / invite email.
 // Inline styles only — email clients ignore <style> and external CSS.
 export function signInEmailHtml(url: string): string {
